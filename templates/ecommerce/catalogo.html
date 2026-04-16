@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% block title %}Catálogo – Nexus Tienda{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top:6rem">
+  <div class="catalog-header">
+    <div>
+      <h1 class="section-title">Catálogo <span class="gradient-text">Nexus</span></h1>
+      <p>Encuentra los mejores productos al mejor precio</p>
+    </div>
+    <div class="catalog-search">
+      <div class="search-wrapper">
+        <i data-lucide="search" class="input-icon"></i>
+        <input type="text" id="catalog-search" placeholder="Buscar productos…" class="form-input search-input" oninput="searchProducts()"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtros por categoría -->
+  <div class="category-filters" id="cat-filters">
+    <button class="cat-btn active" onclick="filterCat('', this)">Todos</button>
+    {% for cat in categorias %}
+    <button class="cat-btn" onclick="filterCat('{{ cat }}', this)">{{ cat }}</button>
+    {% endfor %}
+  </div>
+
+  <!-- Productos Grid -->
+  <div class="products-grid" id="catalog-grid">
+    {% for p in productos %}
+    <div class="product-card" data-nombre="{{ p.nombre.lower() }}" data-cat="{{ p.categoria }}">
+      <div class="product-img-wrapper">
+        <img src="{{ p.imagen }}" alt="{{ p.nombre }}" class="product-img" loading="lazy"/>
+        <span class="product-cat">{{ p.categoria }}</span>
+        <button class="btn-wishlist"><i data-lucide="heart" class="icon-sm"></i></button>
+        {% if p.stock <= 3 %}
+        <span class="stock-badge">¡Últimas {{ p.stock }}!</span>
+        {% endif %}
+      </div>
+      <div class="product-body">
+        <p class="product-seller">{{ p.vendedor.nombre if p.vendedor else 'Nexus' }}</p>
+        <h3 class="product-name">{{ p.nombre }}</h3>
+        <p class="product-desc">{{ p.descripcion[:90] }}…</p>
+        <div class="product-rating">
+          <span class="stars">★★★★☆</span>
+          <span class="rating-count">({{ range(10,200)|random }})</span>
+        </div>
+        <div class="product-footer">
+          <div>
+            <span class="product-price">${{ "%.2f"|format(p.precio) }}</span>
+            <span class="product-price-old">${{ "%.2f"|format(p.precio * 1.15) }}</span>
+          </div>
+          <button class="btn-cart-add" onclick="addToCart({{ p.id }}, '{{ p.nombre }}')">
+            <i data-lucide="shopping-cart" class="icon-sm"></i>
+          </button>
+        </div>
+        <button class="btn-outline w-full" style="margin-top:.75rem"
+                onclick="showProductDetail({{ p.id }}, '{{ p.nombre }}', '{{ p.imagen }}', {{ p.precio }}, '{{ p.descripcion }}')">
+          Ver detalle
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- No results -->
+  <div id="no-results" class="no-results hidden">
+    <p>😕 No se encontraron productos</p>
+  </div>
+</div>
+
+<!-- Product Detail Modal -->
+<div class="modal-overlay" id="product-modal-overlay" onclick="closeProductModal()"></div>
+<div class="modal product-modal glass-card" id="product-modal">
+  <div class="modal-header">
+    <h3 id="pm-title">Detalle</h3>
+    <button class="btn-icon" onclick="closeProductModal()"><i data-lucide="x"></i></button>
+  </div>
+  <div class="product-modal-body">
+    <div class="pm-image-side">
+      <img id="pm-img" src="" alt="" class="pm-img"/>
+    </div>
+    <div class="pm-info-side">
+      <h2 id="pm-name"></h2>
+      <p class="product-price" id="pm-price" style="font-size:2rem"></p>
+      <p id="pm-desc" class="pm-desc"></p>
+      <div class="pm-actions">
+        <div class="pm-qty">
+          <button onclick="document.getElementById('pm-qty-val').value = Math.max(1, +document.getElementById('pm-qty-val').value-1)">−</button>
+          <input type="number" id="pm-qty-val" value="1" min="1" max="99"/>
+          <button onclick="document.getElementById('pm-qty-val').value = +document.getElementById('pm-qty-val').value+1">+</button>
+        </div>
+        <button class="btn-primary btn-lg" id="pm-add-btn">
+          <i data-lucide="shopping-cart" class="icon-sm"></i> Agregar al carrito
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterCat(cat, btn) {
+  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const cards = document.querySelectorAll('.product-card');
+  let visible = 0;
+  cards.forEach(c => {
+    const match = !cat || c.dataset.cat === cat;
+    c.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  document.getElementById('no-results').classList.toggle('hidden', visible > 0);
+}
+
+function searchProducts() {
+  const q = document.getElementById('catalog-search').value.toLowerCase();
+  const cards = document.querySelectorAll('.product-card');
+  let visible = 0;
+  cards.forEach(c => {
+    const match = c.dataset.nombre.includes(q);
+    c.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  document.getElementById('no-results').classList.toggle('hidden', visible > 0);
+}
+
+let currentProductId = null;
+function showProductDetail(id, nombre, imagen, precio, desc) {
+  currentProductId = id;
+  document.getElementById('pm-title').textContent = nombre;
+  document.getElementById('pm-name').textContent  = nombre;
+  document.getElementById('pm-img').src           = imagen;
+  document.getElementById('pm-price').textContent = `$${precio.toLocaleString('es-MX')}`;
+  document.getElementById('pm-desc').textContent  = desc;
+  document.getElementById('pm-qty-val').value     = 1;
+  document.getElementById('pm-add-btn').onclick   = () => {
+    const qty = +document.getElementById('pm-qty-val').value;
+    addToCartQty(id, nombre, qty);
+    closeProductModal();
+  };
+  document.getElementById('product-modal-overlay').classList.add('active');
+  document.getElementById('product-modal').classList.add('active');
+  lucide.createIcons();
+}
+
+function closeProductModal() {
+  document.getElementById('product-modal-overlay').classList.remove('active');
+  document.getElementById('product-modal').classList.remove('active');
+}
+
+async function addToCartQty(id, nombre, qty) {
+  const res = await fetch('/api/carrito', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({producto_id: id, cantidad: qty})
+  });
+  if (res.ok) {
+    showToast(`${nombre} agregado al carrito 🛒`, 'success');
+    updateCartCount();
+  } else {
+    showToast('Inicia sesión para agregar al carrito', 'warning');
+  }
+}
+</script>
+{% endblock %}

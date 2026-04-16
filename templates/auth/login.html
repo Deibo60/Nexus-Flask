@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block title %}Iniciar Sesión – Nexus{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-left">
+    <div class="auth-orb auth-orb-1"></div>
+    <div class="auth-orb auth-orb-2"></div>
+    <div class="auth-brand">
+      <span class="logo-icon big">⬡</span>
+      <h2>NEXUS</h2>
+      <p>Marketplace Social Inteligente</p>
+    </div>
+    <div class="auth-features">
+      <div class="auth-feat"><span>🛒</span> E-Commerce seguro</div>
+      <div class="auth-feat"><span>📍</span> Geolocalización</div>
+      <div class="auth-feat"><span>📡</span> API REST JSON</div>
+      <div class="auth-feat"><span>👥</span> Red Social integrada</div>
+    </div>
+  </div>
+  <div class="auth-right">
+    <div class="auth-card glass-card">
+      <h1 class="auth-title">Bienvenido de vuelta</h1>
+      <p class="auth-sub">Ingresa tus credenciales para continuar</p>
+
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in msgs %}
+          <div class="alert alert-{{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      {% endwith %}
+
+      <form id="login-form" class="auth-form">
+        <div class="form-group">
+          <label>Email</label>
+          <div class="input-wrapper">
+            <i data-lucide="mail" class="input-icon"></i>
+            <input type="email" name="email" id="email" placeholder="tu@email.com" required autocomplete="email"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <div class="input-wrapper">
+            <i data-lucide="lock" class="input-icon"></i>
+            <input type="password" name="password" id="password" placeholder="••••••••" required/>
+            <button type="button" class="toggle-pwd" onclick="togglePassword('password')">
+              <i data-lucide="eye" class="input-icon"></i>
+            </button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="checkbox-label">
+            <input type="checkbox" id="remember"/> Recordarme
+          </label>
+          <a href="#" class="form-link">¿Olvidaste tu contraseña?</a>
+        </div>
+        <button type="submit" class="btn-primary w-full btn-lg" id="login-btn">
+          <span class="btn-text">Iniciar sesión</span>
+          <span class="btn-loader hidden">Cargando…</span>
+        </button>
+      </form>
+
+      <div class="auth-divider"><span>o continúa con</span></div>
+
+      <div class="social-login">
+        <button class="btn-social" onclick="quickLogin('admin@nexus.com','admin123')">
+          🛡️ Demo Admin
+        </button>
+        <button class="btn-social" onclick="quickLogin('maria@nexus.com','user123')">
+          👤 Demo User
+        </button>
+      </div>
+
+      <p class="auth-switch">
+        ¿No tienes cuenta? <a href="{{ url_for('auth.register') }}">Regístrate gratis</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('login-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn   = document.getElementById('login-btn');
+  const email = document.getElementById('email').value;
+  const pwd   = document.getElementById('password').value;
+
+  btn.querySelector('.btn-text').classList.add('hidden');
+  btn.querySelector('.btn-loader').classList.remove('hidden');
+  btn.disabled = true;
+
+  const res  = await fetch('/login', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({email, password: pwd})
+  });
+  const data = await res.json();
+
+  if (data.success) {
+    showToast('¡Bienvenido! 🎉', 'success');
+    setTimeout(() => window.location.href = data.redirect, 600);
+  } else {
+    showToast(data.message || 'Credenciales incorrectas', 'error');
+    btn.querySelector('.btn-text').classList.remove('hidden');
+    btn.querySelector('.btn-loader').classList.add('hidden');
+    btn.disabled = false;
+  }
+});
+
+function quickLogin(email, pwd) {
+  document.getElementById('email').value    = email;
+  document.getElementById('password').value = pwd;
+  document.getElementById('login-form').dispatchEvent(new Event('submit'));
+}
+
+function togglePassword(id) {
+  const inp = document.getElementById(id);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+</script>
+{% endblock %}

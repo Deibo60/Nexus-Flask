@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% block title %}Feed Social – Nexus{% endblock %}
+
+{% block content %}
+<div class="social-layout container">
+
+  <!-- ── LEFT: Create Post + Feed ─────────────────────────── -->
+  <div class="social-feed-col">
+
+    {% if current_user.is_authenticated %}
+    <div class="create-post glass-card">
+      <div class="create-post-header">
+        <img src="{{ current_user.avatar }}" alt="Avatar" class="feed-avatar"/>
+        <textarea id="post-content" placeholder="¿Qué estás pensando, {{ current_user.nombre.split()[0] }}?" rows="3"></textarea>
+      </div>
+      <div class="create-post-footer">
+        <div class="post-options">
+          <button class="post-option-btn"><i data-lucide="image" class="icon-sm"></i> Imagen</button>
+          <button class="post-option-btn"><i data-lucide="map-pin" class="icon-sm"></i> Ubicación</button>
+        </div>
+        <button class="btn-primary" onclick="createPost()">
+          <i data-lucide="send" class="icon-sm"></i> Publicar
+        </button>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Feed Posts -->
+    <div id="social-feed">
+      {% for post in posts %}
+      <article class="feed-card glass-card" id="post-{{ post.id }}">
+        <div class="feed-user">
+          <img src="{{ post.autor.avatar if post.autor else '' }}" alt="Avatar" class="feed-avatar"/>
+          <div class="feed-user-info">
+            <strong>{{ post.autor.nombre if post.autor else 'Usuario' }}</strong>
+            <span class="feed-date">{{ post.fecha.strftime('%d %b %Y · %H:%M') }}</span>
+          </div>
+          {% if current_user.is_authenticated and (current_user.id == post.usuario_id or current_user.rol == 'admin') %}
+          <button class="btn-icon-sm danger post-delete-btn" onclick="deletePost({{ post.id }})" title="Eliminar">
+            <i data-lucide="trash-2" class="icon-sm"></i>
+          </button>
+          {% endif %}
+        </div>
+
+        <p class="feed-content">{{ post.contenido }}</p>
+        {% if post.imagen %}
+        <div class="feed-media">
+          <img src="{{ post.imagen }}" alt="Post image" loading="lazy"/>
+        </div>
+        {% endif %}
+
+        <div class="feed-actions">
+          <button class="feed-like-btn" onclick="likePost({{ post.id }}, this)">
+            <i data-lucide="heart" class="icon-sm"></i>
+            <span class="like-count">{{ post.likes }}</span>
+          </button>
+          <button class="feed-comment-btn" onclick="toggleComments({{ post.id }})">
+            <i data-lucide="message-circle" class="icon-sm"></i>
+            <span>{{ post.comentarios|length }} comentarios</span>
+          </button>
+          <button class="feed-share-btn">
+            <i data-lucide="share-2" class="icon-sm"></i>
+            <span>Compartir</span>
+          </button>
+        </div>
+
+        <!-- Comments Section -->
+        <div class="comments-section" id="comments-{{ post.id }}" style="display:none">
+          <div class="comments-list" id="comments-list-{{ post.id }}">
+            {% for c in post.comentarios %}
+            <div class="comment-item">
+              <img src="{{ c.usuario.avatar if c.usuario else '' }}" alt="" class="comment-avatar"/>
+              <div class="comment-bubble">
+                <strong>{{ c.usuario.nombre if c.usuario else 'Usuario' }}</strong>
+                <p>{{ c.contenido }}</p>
+                <span class="comment-date">{{ c.fecha.strftime('%d %b') }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% if current_user.is_authenticated %}
+          <div class="comment-input-row">
+            <img src="{{ current_user.avatar }}" alt="" class="comment-avatar"/>
+            <input type="text" id="comment-{{ post.id }}" placeholder="Escribe un comentario…" class="comment-input"
+                   onkeypress="if(event.key==='Enter') submitComment({{ post.id }})"/>
+            <button class="btn-icon" onclick="submitComment({{ post.id }})">
+              <i data-lucide="send" class="icon-sm"></i>
+            </button>
+          </div>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── RIGHT: Sidebar ────────────────────────────────────── -->
+  <aside class="social-sidebar">
+    {% if current_user.is_authenticated %}
+    <div class="social-profile glass-card">
+      <img src="{{ current_user.avatar }}" alt="Avatar" class="profile-avatar-lg"/>
+      <h3>{{ current_user.nombre }}</h3>
+      <span class="badge-rol badge-{{ current_user.rol }}">{{ current_user.rol }}</span>
+      <a href="{{ url_for('main.dashboard') }}" class="btn-outline w-full" style="margin-top:1rem">Ver perfil</a>
+    </div>
+    {% endif %}
+
+    <div class="trending-card glass-card">
+      <h4>🔥 Tendencias</h4>
+      <div class="trending-list">
+        <div class="trend-item"><span>#TechLife</span><small>2.4K posts</small></div>
+        <div class="trend-item"><span>#NexusMX</span><small>1.8K posts</small></div>
+        <div class="trend-item"><span>#iPhone15</span><small>980 posts</small></div>
+        <div class="trend-item"><span>#Gadgets2024</span><small>743 posts</small></div>
+        <div class="trend-item"><span>#MacBook</span><small>612 posts</small></div>
+      </div>
+    </div>
+
+    <div class="trending-card glass-card">
+      <h4>📡 API REST</h4>
+      <div class="api-links">
+        <a href="/api/publicaciones" target="_blank" class="api-link">GET /api/publicaciones</a>
+        <a href="/api/productos" target="_blank" class="api-link">GET /api/productos</a>
+        <a href="/api/usuarios" target="_blank" class="api-link">GET /api/usuarios</a>
+      </div>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function createPost() {
+  const content = document.getElementById('post-content').value.trim();
+  if (!content) { showToast('Escribe algo primero', 'warning'); return; }
+
+  const res  = await fetch('/api/publicaciones', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({contenido: content})
+  });
+  const data = await res.json();
+
+  if (res.ok) {
+    document.getElementById('post-content').value = '';
+    showToast('Publicación creada 🎉', 'success');
+    setTimeout(() => location.reload(), 800);
+  } else {
+    showToast(data.error || 'Error al publicar', 'error');
+  }
+}
+
+async function likePost(id, btn) {
+  const res  = await fetch(`/api/publicaciones/${id}/like`, {method:'POST'});
+  const data = await res.json();
+  btn.querySelector('.like-count').textContent = data.likes;
+  btn.classList.toggle('liked');
+}
+
+function toggleComments(id) {
+  const section = document.getElementById(`comments-${id}`);
+  section.style.display = section.style.display === 'none' ? 'block' : 'none';
+}
+
+async function submitComment(postId) {
+  const input   = document.getElementById(`comment-${postId}`);
+  const content = input.value.trim();
+  if (!content) return;
+
+  const res  = await fetch(`/api/publicaciones/${postId}/comentarios`, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({contenido: content})
+  });
+  const data = await res.json();
+
+  if (res.ok) {
+    const list = document.getElementById(`comments-list-${postId}`);
+    const c    = data.comentario;
+    list.insertAdjacentHTML('beforeend', `
+      <div class="comment-item">
+        <div class="comment-bubble">
+          <strong>${c.autor}</strong>
+          <p>${c.contenido}</p>
+        </div>
+      </div>
+    `);
+    input.value = '';
+  }
+}
+
+async function deletePost(id) {
+  if (!confirm('¿Eliminar esta publicación?')) return;
+  const res = await fetch(`/api/publicaciones/${id}`, {method:'DELETE'});
+  if (res.ok) {
+    document.getElementById(`post-${id}`).remove();
+    showToast('Publicación eliminada', 'warning');
+  }
+}
+</script>
+{% endblock %}

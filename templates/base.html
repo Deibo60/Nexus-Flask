@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}Nexus Marketplace{% endblock %}</title>
+
+  <!-- Fuentes: Syne (display) + DM Sans (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+
+  <!-- Leaflet Maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}"/>
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+<!-- ── LOADER ───────────────────────────────────────────── -->
+<div id="page-loader" class="loader-overlay">
+  <div class="loader-ring">
+    <span></span><span></span><span></span>
+  </div>
+  <p class="loader-text">NEXUS</p>
+</div>
+
+<!-- ── NAVBAR ───────────────────────────────────────────── -->
+<nav class="navbar" id="main-nav">
+  <div class="nav-inner">
+    <a href="{{ url_for('main.home') }}" class="nav-logo">
+      <span class="logo-icon">⬡</span>
+      <span class="logo-text">NEXUS</span>
+    </a>
+
+    <div class="nav-links">
+      <a href="{{ url_for('main.home') }}" class="nav-link {% if request.endpoint == 'main.home' %}active{% endif %}">
+        <i data-lucide="home" class="icon-sm"></i> Home
+      </a>
+      <a href="{{ url_for('ecommerce.catalogo') }}" class="nav-link">
+        <i data-lucide="shopping-bag" class="icon-sm"></i> Tienda
+      </a>
+      <a href="{{ url_for('social.feed') }}" class="nav-link">
+        <i data-lucide="rss" class="icon-sm"></i> Social
+      </a>
+    </div>
+
+    <div class="nav-actions">
+      {% if current_user.is_authenticated %}
+        <button class="btn-icon cart-btn" onclick="toggleCart()" title="Carrito">
+          <i data-lucide="shopping-cart" class="icon-sm"></i>
+          <span class="cart-badge" id="cart-count">0</span>
+        </button>
+        <div class="nav-user-menu">
+          <img src="{{ current_user.avatar }}" alt="Avatar" class="nav-avatar"/>
+          <div class="dropdown-menu">
+            <a href="{{ url_for('main.dashboard') }}"><i data-lucide="layout-dashboard" class="icon-sm"></i> Dashboard</a>
+            {% if current_user.rol == 'admin' %}
+            <a href="{{ url_for('admin.dashboard') }}"><i data-lucide="shield" class="icon-sm"></i> Admin</a>
+            {% endif %}
+            <a href="{{ url_for('auth.logout') }}" class="danger"><i data-lucide="log-out" class="icon-sm"></i> Salir</a>
+          </div>
+        </div>
+      {% else %}
+        <a href="{{ url_for('auth.login') }}" class="btn-outline">Iniciar sesión</a>
+        <a href="{{ url_for('auth.register') }}" class="btn-primary">Registrarse</a>
+      {% endif %}
+      <button class="btn-icon" onclick="toggleTheme()" title="Cambiar tema">
+        <i data-lucide="sun" class="icon-sm" id="theme-icon"></i>
+      </button>
+    </div>
+
+    <button class="hamburger" id="hamburger" onclick="toggleMobileMenu()">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+
+  <!-- Mobile Menu -->
+  <div class="mobile-menu" id="mobile-menu">
+    <a href="{{ url_for('main.home') }}">Home</a>
+    <a href="{{ url_for('ecommerce.catalogo') }}">Tienda</a>
+    <a href="{{ url_for('social.feed') }}">Social</a>
+    {% if current_user.is_authenticated %}
+    <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
+    <a href="{{ url_for('auth.logout') }}">Cerrar sesión</a>
+    {% else %}
+    <a href="{{ url_for('auth.login') }}">Iniciar sesión</a>
+    <a href="{{ url_for('auth.register') }}">Registrarse</a>
+    {% endif %}
+  </div>
+</nav>
+
+<!-- ── CART SIDEBAR ──────────────────────────────────────── -->
+<div class="cart-overlay" id="cart-overlay" onclick="toggleCart()"></div>
+<aside class="cart-sidebar" id="cart-sidebar">
+  <div class="cart-header">
+    <h3>Tu Carrito</h3>
+    <button class="btn-icon" onclick="toggleCart()"><i data-lucide="x"></i></button>
+  </div>
+  <div class="cart-items" id="cart-items-list">
+    <p class="cart-empty">Tu carrito está vacío</p>
+  </div>
+  <div class="cart-footer">
+    <div class="cart-total">
+      <span>Total:</span>
+      <strong id="cart-total-price">$0.00</strong>
+    </div>
+    <button class="btn-primary w-full" onclick="checkout()">Finalizar compra</button>
+  </div>
+</aside>
+
+<!-- ── TOAST CONTAINER ───────────────────────────────────── -->
+<div id="toast-container"></div>
+
+<!-- ── MAIN CONTENT ──────────────────────────────────────── -->
+<main class="main-content">
+  {% block content %}{% endblock %}
+</main>
+
+<!-- ── FOOTER ───────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <span class="logo-icon">⬡</span>
+      <span class="logo-text">NEXUS</span>
+      <p>Marketplace Social Inteligente</p>
+    </div>
+    <div class="footer-links">
+      <h4>Plataforma</h4>
+      <a href="{{ url_for('ecommerce.catalogo') }}">Tienda</a>
+      <a href="{{ url_for('social.feed') }}">Social Feed</a>
+      <a href="#">API Docs</a>
+    </div>
+    <div class="footer-links">
+      <h4>Tecnología</h4>
+      <a href="#">Flask REST API</a>
+      <a href="#">SQLAlchemy ORM</a>
+      <a href="#">Leaflet Maps</a>
+    </div>
+    <div class="footer-links">
+      <h4>API Endpoints</h4>
+      <a href="/api/productos" target="_blank">GET /api/productos</a>
+      <a href="/api/publicaciones" target="_blank">GET /api/publicaciones</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; 2024 Nexus Marketplace · Construido con Flask + Python</p>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+
+<script>
+  lucide.createIcons();
+
+  // Hide loader
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      document.getElementById('page-loader').classList.add('hidden');
+    }, 800);
+  });
+</script>
+</body>
+</html>

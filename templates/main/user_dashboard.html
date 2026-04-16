@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block title %}Mi Dashboard – Nexus{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top:6rem">
+  <div class="user-dashboard">
+
+    <!-- Profile Card -->
+    <div class="user-profile-card glass-card">
+      <div class="profile-cover"></div>
+      <div class="profile-body">
+        <img src="{{ current_user.avatar }}" alt="Avatar" class="profile-avatar-xl"/>
+        <h2>{{ current_user.nombre }}</h2>
+        <p class="profile-email">{{ current_user.email }}</p>
+        <span class="badge-rol badge-{{ current_user.rol }}">{{ current_user.rol }}</span>
+        <p class="profile-bio">{{ current_user.bio or 'Sin bio todavía. ¡Agrega una descripción!' }}</p>
+        <div class="profile-stats">
+          <div class="pstat"><strong>{{ mis_posts|length }}</strong><span>Posts</span></div>
+          <div class="pstat"><strong>{{ mis_productos|length }}</strong><span>Productos</span></div>
+          <div class="pstat"><strong>0</strong><span>Órdenes</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="user-dash-main">
+      <div class="dash-tabs">
+        <button class="dash-tab active" onclick="showTab('mis-posts', this)">Mis Publicaciones</button>
+        <button class="dash-tab" onclick="showTab('mis-productos', this)">Mis Productos</button>
+        <button class="dash-tab" onclick="showTab('mis-ordenes', this)">Mis Órdenes</button>
+      </div>
+
+      <!-- Tab: Posts -->
+      <div class="tab-content active" id="tab-mis-posts">
+        {% if mis_posts %}
+          {% for post in mis_posts %}
+          <div class="dash-post-card glass-card">
+            <p>{{ post.contenido }}</p>
+            <div class="dash-post-meta">
+              <span>❤️ {{ post.likes }} likes</span>
+              <span>💬 {{ post.comentarios|length }} comentarios</span>
+              <span>{{ post.fecha.strftime('%d %b %Y') }}</span>
+              <button class="btn-icon-sm danger" onclick="deleteMyPost({{ post.id }}, this)">
+                <i data-lucide="trash-2" class="icon-sm"></i>
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">
+            <p>😶 Aún no has publicado nada.</p>
+            <a href="{{ url_for('social.feed') }}" class="btn-primary">Ir al feed social</a>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Tab: Productos -->
+      <div class="tab-content" id="tab-mis-productos">
+        {% if mis_productos %}
+        <div class="products-grid">
+          {% for p in mis_productos %}
+          <div class="product-card">
+            <div class="product-img-wrapper">
+              <img src="{{ p.imagen }}" alt="{{ p.nombre }}" class="product-img"/>
+              <span class="product-cat">{{ p.categoria }}</span>
+            </div>
+            <div class="product-body">
+              <h3 class="product-name">{{ p.nombre }}</h3>
+              <div class="product-footer">
+                <span class="product-price">${{ "%.2f"|format(p.precio) }}</span>
+                <button class="btn-icon-sm danger" onclick="deleteMyProduct({{ p.id }}, this)">
+                  <i data-lucide="trash-2" class="icon-sm"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+          <div class="empty-state">
+            <p>📦 No tienes productos publicados.</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <!-- Tab: Órdenes -->
+      <div class="tab-content" id="tab-mis-ordenes">
+        <div id="ordenes-list">
+          <div class="spinner"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'mis-ordenes') loadOrdenes();
+}
+
+async function loadOrdenes() {
+  const res  = await fetch('/api/ordenes');
+  const data = await res.json();
+  const el   = document.getElementById('ordenes-list');
+
+  if (!data.ordenes.length) {
+    el.innerHTML = '<div class="empty-state"><p>🛒 No tienes órdenes todavía.</p><a href="/shop/" class="btn-primary">Ver catálogo</a></div>';
+    return;
+  }
+  el.innerHTML = data.ordenes.map(o => `
+    <div class="order-card glass-card">
+      <div class="order-header">
+        <strong>Orden #${o.id}</strong>
+        <span class="badge-status active">${o.estado}</span>
+      </div>
+      <p class="order-total">Total: <strong>$${o.total.toLocaleString('es-MX')}</strong></p>
+      <p class="order-date">${new Date(o.fecha).toLocaleDateString('es-MX', {dateStyle:'long'})}</p>
+    </div>
+  `).join('');
+}
+
+async function deleteMyPost(id, btn) {
+  if (!confirm('¿Eliminar publicación?')) return;
+  await fetch(`/api/publicaciones/${id}`, {method:'DELETE'});
+  btn.closest('.dash-post-card').remove();
+  showToast('Publicación eliminada', 'warning');
+}
+
+async function deleteMyProduct(id, btn) {
+  if (!confirm('¿Eliminar producto?')) return;
+  await fetch(`/api/productos/${id}`, {method:'DELETE'});
+  btn.closest('.product-card').remove();
+  showToast('Producto eliminado', 'warning');
+}
+</script>
+{% endblock %}

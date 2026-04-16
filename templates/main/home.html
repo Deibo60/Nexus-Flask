@@ -1,0 +1,283 @@
+{% extends 'base.html' %}
+{% block title %}Nexus – Marketplace Social Inteligente{% endblock %}
+
+{% block content %}
+
+<!-- ══════════════════════════════════════════
+     HERO
+══════════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-bg">
+    <div class="hero-orb orb-1"></div>
+    <div class="hero-orb orb-2"></div>
+    <div class="hero-orb orb-3"></div>
+    <div class="hero-grid"></div>
+  </div>
+  <div class="hero-content">
+    <div class="hero-badge">🚀 Marketplace del Futuro</div>
+    <h1 class="hero-title">
+      Compra, Vende<br/>
+      <span class="gradient-text">Conecta.</span>
+    </h1>
+    <p class="hero-sub">
+      La plataforma que une e-commerce inteligente, red social y geolocalización
+      en una experiencia única.
+    </p>
+    <div class="hero-actions">
+      <a href="{{ url_for('ecommerce.catalogo') }}" class="btn-primary btn-lg">
+        <i data-lucide="shopping-bag" class="icon-sm"></i> Explorar Tienda
+      </a>
+      <a href="{{ url_for('social.feed') }}" class="btn-glass btn-lg">
+        <i data-lucide="users" class="icon-sm"></i> Ver Feed Social
+      </a>
+    </div>
+    <div class="hero-stats">
+      <div class="stat-item"><strong>6K+</strong><span>Productos</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat-item"><strong>12K+</strong><span>Usuarios</span></div>
+      <div class="stat-divider"></div>
+      <div class="stat-item"><strong>98%</strong><span>Satisfacción</span></div>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <div class="product-card-float card-float-1 glass-card">
+      <img src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=200" alt="MacBook"/>
+      <div>
+        <p class="card-float-title">MacBook Pro M3</p>
+        <p class="card-float-price">$45,999</p>
+      </div>
+    </div>
+    <div class="product-card-float card-float-2 glass-card">
+      <img src="https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=200" alt="iPhone"/>
+      <div>
+        <p class="card-float-title">iPhone 15 Pro Max</p>
+        <p class="card-float-price">$32,999</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     PRODUCTOS DESTACADOS
+══════════════════════════════════════════ -->
+<section class="section" id="productos-section">
+  <div class="container">
+    <div class="section-header">
+      <h2 class="section-title">Productos Destacados</h2>
+      <a href="{{ url_for('ecommerce.catalogo') }}" class="btn-link">Ver todos →</a>
+    </div>
+    <div class="products-grid" id="home-products-grid">
+      {% for p in productos %}
+      <div class="product-card" data-aos="fade-up">
+        <div class="product-img-wrapper">
+          <img src="{{ p.imagen }}" alt="{{ p.nombre }}" class="product-img" loading="lazy"/>
+          <span class="product-cat">{{ p.categoria }}</span>
+          <button class="btn-wishlist"><i data-lucide="heart" class="icon-sm"></i></button>
+        </div>
+        <div class="product-body">
+          <p class="product-seller">{{ p.vendedor.nombre if p.vendedor else 'Nexus' }}</p>
+          <h3 class="product-name">{{ p.nombre }}</h3>
+          <p class="product-desc">{{ p.descripcion[:80] }}…</p>
+          <div class="product-footer">
+            <span class="product-price">${{ "%.2f"|format(p.precio) }}</span>
+            <button class="btn-cart-add" onclick="addToCart({{ p.id }}, '{{ p.nombre }}')">
+              <i data-lucide="shopping-cart" class="icon-sm"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     FEATURES STRIP
+══════════════════════════════════════════ -->
+<section class="features-strip">
+  <div class="container features-grid">
+    <div class="feature-item">
+      <div class="feature-icon">🛡️</div>
+      <h4>Pago Seguro</h4>
+      <p>Encriptación SSL en cada transacción</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">📍</div>
+      <h4>Geolocalización</h4>
+      <p>Encuentra vendedores cerca de ti</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">⚡</div>
+      <h4>API REST</h4>
+      <p>Integración rápida con JSON</p>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🌐</div>
+      <h4>Red Social</h4>
+      <p>Conecta con compradores y vendedores</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     FEED SOCIAL + STREAMING (2 columnas)
+══════════════════════════════════════════ -->
+<section class="section">
+  <div class="container dual-col">
+
+    <!-- Feed Social -->
+    <div>
+      <div class="section-header">
+        <h2 class="section-title">Feed Social</h2>
+        <a href="{{ url_for('social.feed') }}" class="btn-link">Ver más →</a>
+      </div>
+      <div class="feed-list" id="home-feed">
+        {% for post in posts[:3] %}
+        <div class="feed-card glass-card">
+          <div class="feed-user">
+            <img src="{{ post.autor.avatar if post.autor else '' }}" alt="Avatar" class="feed-avatar"/>
+            <div>
+              <strong>{{ post.autor.nombre if post.autor else 'Usuario' }}</strong>
+              <span class="feed-date">{{ post.fecha.strftime('%d %b %Y') }}</span>
+            </div>
+          </div>
+          <p class="feed-content">{{ post.contenido }}</p>
+          <div class="feed-actions">
+            <button class="feed-like-btn" onclick="likePost({{ post.id }}, this)">
+              <i data-lucide="heart" class="icon-sm"></i>
+              <span>{{ post.likes }}</span>
+            </button>
+            <button class="feed-comment-btn">
+              <i data-lucide="message-circle" class="icon-sm"></i>
+              <span>{{ post.comentarios|length }}</span>
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Streaming -->
+    <div>
+      <div class="section-header">
+        <h2 class="section-title">Streaming</h2>
+      </div>
+      <div class="streaming-grid">
+        <div class="stream-card glass-card">
+          <div class="stream-thumb">
+            <iframe
+              src="https://www.youtube.com/embed/dQw4w9WgXcQ?controls=1&rel=0&modestbranding=1"
+              title="Nexus Stream 1"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+              loading="lazy">
+            </iframe>
+          </div>
+          <div class="stream-info">
+            <span class="stream-live">● LIVE</span>
+            <p class="stream-title">Tech Review: Gadgets 2024</p>
+            <span class="stream-viewers">👁 2.4K viendo</span>
+          </div>
+        </div>
+        <div class="stream-card glass-card">
+          <div class="stream-thumb">
+            <iframe
+              src="https://www.youtube.com/embed/jNQXAC9IVRw?controls=1&rel=0&modestbranding=1"
+              title="Nexus Stream 2"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+              loading="lazy">
+            </iframe>
+          </div>
+          <div class="stream-info">
+            <span class="stream-badge">TENDENCIA</span>
+            <p class="stream-title">Unboxing: iPhone 15 Pro Max</p>
+            <span class="stream-viewers">👁 890 viendo</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     MAPA DE PRODUCTOS (Leaflet)
+══════════════════════════════════════════ -->
+<section class="section section-dark">
+  <div class="container">
+    <div class="section-header">
+      <h2 class="section-title">Productos Cerca de Ti</h2>
+      <span class="section-badge">Geolocalización</span>
+    </div>
+    <div class="map-wrapper glass-card">
+      <div id="map" style="height:420px;border-radius:16px;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════
+     CTA
+══════════════════════════════════════════ -->
+<section class="cta-section">
+  <div class="cta-orb"></div>
+  <div class="container cta-inner">
+    <h2>¿Listo para unirte a Nexus?</h2>
+    <p>Regístrate gratis y empieza a comprar, vender y conectar hoy mismo.</p>
+    <div class="cta-actions">
+      {% if not current_user.is_authenticated %}
+      <a href="{{ url_for('auth.register') }}" class="btn-primary btn-lg">Crear cuenta gratis</a>
+      {% else %}
+      <a href="{{ url_for('ecommerce.catalogo') }}" class="btn-primary btn-lg">Ver Catálogo</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Mapa Leaflet ────────────────────────────────────────────
+const map = L.map('map').setView([20.5204, -100.8147], 12);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© OpenStreetMap © CartoDB', maxZoom: 19
+}).addTo(map);
+
+const customIcon = L.divIcon({
+  html: `<div class="map-marker">⬡</div>`,
+  className: '', iconSize: [36,36], iconAnchor: [18,18]
+});
+
+fetch('/api/productos')
+  .then(r => r.json())
+  .then(data => {
+    data.productos.forEach(p => {
+      const marker = L.marker([p.lat, p.lng], {icon: customIcon}).addTo(map);
+      marker.bindPopup(`
+        <div class="map-popup">
+          <img src="${p.imagen}" style="width:100%;border-radius:8px;margin-bottom:8px"/>
+          <strong>${p.nombre}</strong><br/>
+          <span class="price">$${p.precio.toLocaleString('es-MX')}</span><br/>
+          <button onclick="addToCart(${p.id},'${p.nombre}')" class="btn-primary" style="margin-top:8px;width:100%">
+            Agregar al carrito
+          </button>
+        </div>
+      `);
+    });
+  });
+
+// ── Clima / Geolocalización del usuario ────────────────────
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    L.marker([lat, lng], {
+      icon: L.divIcon({ html:'<div class="user-marker">📍</div>',
+                        className:'', iconSize:[30,30] })
+    }).addTo(map).bindPopup('📍 Tu ubicación actual').openPopup();
+    map.setView([lat, lng], 13);
+  });
+}
+</script>
+{% endblock %}

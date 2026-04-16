@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+{% block title %}Gestión de Usuarios – Admin{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+  <aside class="admin-sidebar" id="admin-sidebar">
+    <div class="sidebar-brand"><span class="logo-icon">⬡</span><span>NEXUS <em>Admin</em></span></div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('admin.dashboard') }}" class="sidebar-link"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+      <a href="{{ url_for('admin.usuarios') }}" class="sidebar-link active"><i data-lucide="users"></i><span>Usuarios</span></a>
+      <a href="{{ url_for('admin.productos') }}" class="sidebar-link"><i data-lucide="package"></i><span>Productos</span></a>
+      <a href="{{ url_for('admin.publicaciones') }}" class="sidebar-link"><i data-lucide="rss"></i><span>Publicaciones</span></a>
+      <a href="{{ url_for('main.home') }}" class="sidebar-link"><i data-lucide="home"></i><span>Ver sitio</span></a>
+      <a href="{{ url_for('auth.logout') }}" class="sidebar-link danger"><i data-lucide="log-out"></i><span>Salir</span></a>
+    </nav>
+  </aside>
+
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <button class="btn-icon" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
+      <h1 class="admin-page-title">Gestión de Usuarios</h1>
+    </header>
+
+    <div class="admin-toolbar">
+      <div class="search-wrapper">
+        <i data-lucide="search" class="input-icon"></i>
+        <input type="text" id="search-input" placeholder="Buscar usuario…" oninput="filterTable()" class="form-input search-input"/>
+      </div>
+      <button class="btn-primary" onclick="openCreateModal()">
+        <i data-lucide="user-plus" class="icon-sm"></i> Nuevo Usuario
+      </button>
+    </div>
+
+    <div class="admin-panel glass-card">
+      <div class="table-wrapper">
+        <table class="admin-table" id="main-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Usuario</th>
+              <th>Email</th>
+              <th>Rol</th>
+              <th>Fecha Registro</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <tr><td colspan="7" class="loading-cell"><div class="spinner"></div> Cargando…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal()"></div>
+<div class="modal glass-card" id="edit-modal">
+  <div class="modal-header">
+    <h3 id="modal-title">Usuario</h3>
+    <button class="btn-icon" onclick="closeModal()"><i data-lucide="x"></i></button>
+  </div>
+  <div class="modal-body" id="modal-body"></div>
+  <div class="modal-footer">
+    <button class="btn-outline" onclick="closeModal()">Cancelar</button>
+    <button class="btn-primary" id="modal-save-btn">Guardar</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allUsuarios = [];
+
+async function loadUsuarios() {
+  const res  = await fetch('/api/usuarios');
+  const data = await res.json();
+  allUsuarios = data.usuarios;
+  renderTable(allUsuarios);
+}
+
+function renderTable(usuarios) {
+  const tbody = document.getElementById('table-body');
+  if (!usuarios.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-cell">No hay usuarios</td></tr>';
+    return;
+  }
+  tbody.innerHTML = usuarios.map(u => `
+    <tr>
+      <td>${u.id}</td>
+      <td>
+        <div class="table-user">
+          <img src="${u.avatar}" class="table-avatar" alt=""/>
+          <div>
+            <strong>${u.nombre}</strong>
+          </div>
+        </div>
+      </td>
+      <td>${u.email}</td>
+      <td><span class="badge-rol badge-${u.rol}">${u.rol}</span></td>
+      <td>${new Date(u.fecha_reg).toLocaleDateString('es-MX')}</td>
+      <td><span class="badge-status ${u.activo ? 'active' : 'inactive'}">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
+      <td class="action-cell">
+        <button class="btn-icon-sm" onclick="editUsuario(${u.id})" title="Editar"><i data-lucide="pencil"></i></button>
+        <button class="btn-icon-sm danger" onclick="deleteUsuario(${u.id})" title="Desactivar"><i data-lucide="trash-2"></i></button>
+      </td>
+    </tr>
+  `).join('');
+  lucide.createIcons();
+}
+
+function filterTable() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  renderTable(allUsuarios.filter(u =>
+    u.nombre.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+  ));
+}
+
+function openCreateModal() {
+  document.getElementById('modal-title').textContent = 'Nuevo Usuario';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="form-group"><label>Nombre</label><input type="text" id="new-nombre" class="form-input" placeholder="Nombre completo"/></div>
+    <div class="form-group"><label>Email</label><input type="email" id="new-email" class="form-input" placeholder="email@ejemplo.com"/></div>
+    <div class="form-group"><label>Contraseña</label><input type="password" id="new-pwd" class="form-input" placeholder="Contraseña"/></div>
+    <div class="form-group"><label>Rol</label>
+      <select id="new-rol" class="form-input">
+        <option value="user">Usuario</option>
+        <option value="admin">Admin</option>
+        <option value="invitado">Invitado</option>
+      </select>
+    </div>`;
+  document.getElementById('modal-save-btn').onclick = async () => {
+    const body = {
+      nombre:   document.getElementById('new-nombre').value,
+      email:    document.getElementById('new-email').value,
+      password: document.getElementById('new-pwd').value,
+      rol:      document.getElementById('new-rol').value
+    };
+    const res = await fetch('/api/usuarios', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    if (res.ok) { closeModal(); loadUsuarios(); showToast('Usuario creado ✓', 'success'); }
+    else { const d = await res.json(); showToast(d.error, 'error'); }
+  };
+  openModal();
+}
+
+async function editUsuario(id) {
+  const res = await fetch(`/api/usuarios/${id}`);
+  const u   = await res.json();
+  document.getElementById('modal-title').textContent = 'Editar Usuario';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="form-group"><label>Nombre</label><input type="text" id="e-nombre" value="${u.nombre}" class="form-input"/></div>
+    <div class="form-group"><label>Rol</label>
+      <select id="e-rol" class="form-input">
+        <option value="user" ${u.rol==='user'?'selected':''}>Usuario</option>
+        <option value="admin" ${u.rol==='admin'?'selected':''}>Admin</option>
+        <option value="invitado" ${u.rol==='invitado'?'selected':''}>Invitado</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Estado</label>
+      <select id="e-activo" class="form-input">
+        <option value="true" ${u.activo?'selected':''}>Activo</option>
+        <option value="false" ${!u.activo?'selected':''}>Inactivo</option>
+      </select>
+    </div>`;
+  document.getElementById('modal-save-btn').onclick = async () => {
+    await fetch(`/api/usuarios/${id}`, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        nombre: document.getElementById('e-nombre').value,
+        rol:    document.getElementById('e-rol').value,
+        activo: document.getElementById('e-activo').value === 'true'
+      })
+    });
+    closeModal(); loadUsuarios(); showToast('Usuario actualizado ✓', 'success');
+  };
+  openModal();
+}
+
+async function deleteUsuario(id) {
+  if (!confirm('¿Desactivar este usuario?')) return;
+  await fetch(`/api/usuarios/${id}`, {method:'DELETE'});
+  loadUsuarios(); showToast('Usuario desactivado', 'warning');
+}
+
+function toggleSidebar() { document.getElementById('admin-sidebar').classList.toggle('collapsed'); }
+function openModal()  { document.getElementById('modal-overlay').classList.add('active'); document.getElementById('edit-modal').classList.add('active'); lucide.createIcons(); }
+function closeModal() { document.getElementById('modal-overlay').classList.remove('active'); document.getElementById('edit-modal').classList.remove('active'); }
+
+loadUsuarios();
+</script>
+{% endblock %}

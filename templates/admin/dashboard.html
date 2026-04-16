@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard – Nexus{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+
+  <!-- ── SIDEBAR ─────────────────────────────────────────── -->
+  <aside class="admin-sidebar" id="admin-sidebar">
+    <div class="sidebar-brand">
+      <span class="logo-icon">⬡</span>
+      <span>NEXUS <em>Admin</em></span>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('admin.dashboard') }}" class="sidebar-link active">
+        <i data-lucide="layout-dashboard"></i><span>Dashboard</span>
+      </a>
+      <a href="{{ url_for('admin.usuarios') }}" class="sidebar-link">
+        <i data-lucide="users"></i><span>Usuarios</span>
+      </a>
+      <a href="{{ url_for('admin.productos') }}" class="sidebar-link">
+        <i data-lucide="package"></i><span>Productos</span>
+      </a>
+      <a href="{{ url_for('admin.publicaciones') }}" class="sidebar-link">
+        <i data-lucide="rss"></i><span>Publicaciones</span>
+      </a>
+      <a href="/api/productos" target="_blank" class="sidebar-link">
+        <i data-lucide="code-2"></i><span>API REST</span>
+      </a>
+      <a href="{{ url_for('main.home') }}" class="sidebar-link">
+        <i data-lucide="home"></i><span>Ver sitio</span>
+      </a>
+      <a href="{{ url_for('auth.logout') }}" class="sidebar-link danger">
+        <i data-lucide="log-out"></i><span>Salir</span>
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <img src="{{ current_user.avatar }}" alt="Admin"/>
+      <div>
+        <p>{{ current_user.nombre }}</p>
+        <span class="badge-admin">Admin</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ADMIN CONTENT ─────────────────────────────── -->
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <button class="btn-icon" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
+      <h1 class="admin-page-title">Dashboard</h1>
+      <div class="topbar-right">
+        <span class="admin-date" id="admin-clock"></span>
+      </div>
+    </header>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="stat-card glass-card" style="--accent:#6366f1">
+        <div class="stat-icon"><i data-lucide="users"></i></div>
+        <div class="stat-info">
+          <p class="stat-label">Usuarios</p>
+          <h2 class="stat-value" id="stat-usuarios">{{ stats.usuarios }}</h2>
+          <span class="stat-sub">↑ 12% este mes</span>
+        </div>
+      </div>
+      <div class="stat-card glass-card" style="--accent:#06b6d4">
+        <div class="stat-icon"><i data-lucide="package"></i></div>
+        <div class="stat-info">
+          <p class="stat-label">Productos</p>
+          <h2 class="stat-value" id="stat-productos">{{ stats.productos }}</h2>
+          <span class="stat-sub">↑ 8% este mes</span>
+        </div>
+      </div>
+      <div class="stat-card glass-card" style="--accent:#10b981">
+        <div class="stat-icon"><i data-lucide="rss"></i></div>
+        <div class="stat-info">
+          <p class="stat-label">Publicaciones</p>
+          <h2 class="stat-value" id="stat-posts">{{ stats.publicaciones }}</h2>
+          <span class="stat-sub">↑ 24% este mes</span>
+        </div>
+      </div>
+      <div class="stat-card glass-card" style="--accent:#f59e0b">
+        <div class="stat-icon"><i data-lucide="dollar-sign"></i></div>
+        <div class="stat-info">
+          <p class="stat-label">Revenue</p>
+          <h2 class="stat-value">${{ "%.0f"|format(stats.revenue) }}</h2>
+          <span class="stat-sub">↑ 31% total</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Tables Row -->
+    <div class="admin-dual">
+
+      <!-- Últimos Usuarios -->
+      <div class="admin-panel glass-card">
+        <div class="panel-header">
+          <h3>Últimos Usuarios</h3>
+          <a href="{{ url_for('admin.usuarios') }}" class="btn-link">Ver todos →</a>
+        </div>
+        <div class="table-wrapper">
+          <table class="admin-table" id="usuarios-table">
+            <thead>
+              <tr><th>Usuario</th><th>Email</th><th>Rol</th><th>Acciones</th></tr>
+            </thead>
+            <tbody id="usuarios-tbody">
+              <tr><td colspan="4" class="loading-cell"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Últimos Productos -->
+      <div class="admin-panel glass-card">
+        <div class="panel-header">
+          <h3>Últimos Productos</h3>
+          <a href="{{ url_for('admin.productos') }}" class="btn-link">Ver todos →</a>
+        </div>
+        <div class="table-wrapper">
+          <table class="admin-table" id="productos-table">
+            <thead>
+              <tr><th>Producto</th><th>Precio</th><th>Cat.</th><th>Acciones</th></tr>
+            </thead>
+            <tbody id="productos-tbody">
+              <tr><td colspan="4" class="loading-cell"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity Chart (CSS-only bar chart) -->
+    <div class="admin-panel glass-card" style="margin-top:1.5rem">
+      <div class="panel-header">
+        <h3>Actividad del Sistema</h3>
+        <span class="badge-live">● Live</span>
+      </div>
+      <div class="activity-bars" id="activity-bars">
+        {% for day, val in [('Lun',65),('Mar',82),('Mié',74),('Jue',91),('Vie',88),('Sáb',55),('Dom',43)] %}
+        <div class="activity-bar-col">
+          <div class="activity-bar" style="--h:{{ val }}%"></div>
+          <span>{{ day }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL EDITAR USUARIO ─────────────────────────────── -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal()"></div>
+<div class="modal glass-card" id="edit-modal">
+  <div class="modal-header">
+    <h3 id="modal-title">Editar</h3>
+    <button class="btn-icon" onclick="closeModal()"><i data-lucide="x"></i></button>
+  </div>
+  <div class="modal-body" id="modal-body"></div>
+  <div class="modal-footer">
+    <button class="btn-outline" onclick="closeModal()">Cancelar</button>
+    <button class="btn-primary" id="modal-save-btn">Guardar cambios</button>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── Clock ──────────────────────────────────────────────────
+function updateClock() {
+  document.getElementById('admin-clock').textContent =
+    new Date().toLocaleString('es-MX', {dateStyle:'medium', timeStyle:'short'});
+}
+updateClock(); setInterval(updateClock, 60000);
+
+// ── Toggle sidebar ─────────────────────────────────────────
+function toggleSidebar() {
+  document.getElementById('admin-sidebar').classList.toggle('collapsed');
+}
+
+// ── Load Usuarios ──────────────────────────────────────────
+async function loadUsuarios() {
+  const res  = await fetch('/api/usuarios');
+  const data = await res.json();
+  const tbody = document.getElementById('usuarios-tbody');
+  tbody.innerHTML = data.usuarios.slice(0,5).map(u => `
+    <tr>
+      <td>
+        <div class="table-user">
+          <img src="${u.avatar}" class="table-avatar" alt=""/>
+          ${u.nombre}
+        </div>
+      </td>
+      <td>${u.email}</td>
+      <td><span class="badge-rol badge-${u.rol}">${u.rol}</span></td>
+      <td>
+        <button class="btn-icon-sm" onclick="editUsuario(${u.id})" title="Editar">
+          <i data-lucide="pencil"></i>
+        </button>
+        <button class="btn-icon-sm danger" onclick="deleteUsuario(${u.id})" title="Desactivar">
+          <i data-lucide="trash-2"></i>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+  lucide.createIcons();
+}
+
+// ── Load Productos ─────────────────────────────────────────
+async function loadProductos() {
+  const res  = await fetch('/api/productos');
+  const data = await res.json();
+  const tbody = document.getElementById('productos-tbody');
+  tbody.innerHTML = data.productos.slice(0,5).map(p => `
+    <tr>
+      <td>
+        <div class="table-user">
+          <img src="${p.imagen}" class="table-avatar" alt=""/>
+          ${p.nombre.substring(0,25)}…
+        </div>
+      </td>
+      <td class="text-green">$${p.precio.toLocaleString('es-MX')}</td>
+      <td>${p.categoria}</td>
+      <td>
+        <button class="btn-icon-sm" onclick="editProducto(${p.id})" title="Editar">
+          <i data-lucide="pencil"></i>
+        </button>
+        <button class="btn-icon-sm danger" onclick="deleteProducto(${p.id})" title="Eliminar">
+          <i data-lucide="trash-2"></i>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+  lucide.createIcons();
+}
+
+// ── Edit / Delete Helpers ──────────────────────────────────
+async function editUsuario(id) {
+  const res  = await fetch(`/api/usuarios/${id}`);
+  const u    = await res.json();
+  document.getElementById('modal-title').textContent = 'Editar Usuario';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="form-group"><label>Nombre</label>
+      <input type="text" id="edit-nombre" value="${u.nombre}" class="form-input"/>
+    </div>
+    <div class="form-group"><label>Rol</label>
+      <select id="edit-rol" class="form-input">
+        <option value="user" ${u.rol==='user'?'selected':''}>Usuario</option>
+        <option value="admin" ${u.rol==='admin'?'selected':''}>Admin</option>
+        <option value="invitado" ${u.rol==='invitado'?'selected':''}>Invitado</option>
+      </select>
+    </div>`;
+  document.getElementById('modal-save-btn').onclick = async () => {
+    await fetch(`/api/usuarios/${id}`, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({nombre: document.getElementById('edit-nombre').value,
+                            rol:    document.getElementById('edit-rol').value})
+    });
+    closeModal(); loadUsuarios(); showToast('Usuario actualizado ✓', 'success');
+  };
+  openModal();
+}
+
+async function deleteUsuario(id) {
+  if (!confirm('¿Desactivar este usuario?')) return;
+  await fetch(`/api/usuarios/${id}`, {method:'DELETE'});
+  loadUsuarios(); showToast('Usuario desactivado', 'warning');
+}
+
+async function editProducto(id) {
+  const res = await fetch(`/api/productos/${id}`);
+  const p   = await res.json();
+  document.getElementById('modal-title').textContent = 'Editar Producto';
+  document.getElementById('modal-body').innerHTML = `
+    <div class="form-group"><label>Nombre</label>
+      <input type="text" id="edit-pnombre" value="${p.nombre}" class="form-input"/>
+    </div>
+    <div class="form-group"><label>Precio</label>
+      <input type="number" id="edit-pprecio" value="${p.precio}" class="form-input"/>
+    </div>
+    <div class="form-group"><label>Categoría</label>
+      <input type="text" id="edit-pcat" value="${p.categoria}" class="form-input"/>
+    </div>`;
+  document.getElementById('modal-save-btn').onclick = async () => {
+    await fetch(`/api/productos/${id}`, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({nombre: document.getElementById('edit-pnombre').value,
+                            precio: document.getElementById('edit-pprecio').value,
+                            categoria: document.getElementById('edit-pcat').value})
+    });
+    closeModal(); loadProductos(); showToast('Producto actualizado ✓', 'success');
+  };
+  openModal();
+}
+
+async function deleteProducto(id) {
+  if (!confirm('¿Eliminar este producto?')) return;
+  await fetch(`/api/productos/${id}`, {method:'DELETE'});
+  loadProductos(); showToast('Producto eliminado', 'warning');
+}
+
+function openModal()  { document.getElementById('modal-overlay').classList.add('active'); document.getElementById('edit-modal').classList.add('active'); lucide.createIcons(); }
+function closeModal() { document.getElementById('modal-overlay').classList.remove('active'); document.getElementById('edit-modal').classList.remove('active'); }
+
+loadUsuarios();
+loadProductos();
+</script>
+{% endblock %}

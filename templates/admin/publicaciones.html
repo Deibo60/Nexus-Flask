@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block title %}Gestión de Publicaciones – Admin{% endblock %}
+
+{% block content %}
+<div class="admin-layout">
+  <aside class="admin-sidebar" id="admin-sidebar">
+    <div class="sidebar-brand"><span class="logo-icon">⬡</span><span>NEXUS <em>Admin</em></span></div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('admin.dashboard') }}" class="sidebar-link"><i data-lucide="layout-dashboard"></i><span>Dashboard</span></a>
+      <a href="{{ url_for('admin.usuarios') }}" class="sidebar-link"><i data-lucide="users"></i><span>Usuarios</span></a>
+      <a href="{{ url_for('admin.productos') }}" class="sidebar-link"><i data-lucide="package"></i><span>Productos</span></a>
+      <a href="{{ url_for('admin.publicaciones') }}" class="sidebar-link active"><i data-lucide="rss"></i><span>Publicaciones</span></a>
+      <a href="{{ url_for('main.home') }}" class="sidebar-link"><i data-lucide="home"></i><span>Ver sitio</span></a>
+      <a href="{{ url_for('auth.logout') }}" class="sidebar-link danger"><i data-lucide="log-out"></i><span>Salir</span></a>
+    </nav>
+  </aside>
+
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <button class="btn-icon" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
+      <h1 class="admin-page-title">Gestión de Publicaciones</h1>
+    </header>
+
+    <div class="admin-panel glass-card">
+      <div class="table-wrapper">
+        <table class="admin-table">
+          <thead>
+            <tr><th>#</th><th>Autor</th><th>Contenido</th><th>Likes</th><th>Fecha</th><th>Acciones</th></tr>
+          </thead>
+          <tbody id="posts-body">
+            <tr><td colspan="6" class="loading-cell"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadPosts() {
+  const res  = await fetch('/api/publicaciones');
+  const data = await res.json();
+  const tbody = document.getElementById('posts-body');
+  tbody.innerHTML = data.publicaciones.map(p => `
+    <tr>
+      <td>${p.id}</td>
+      <td>
+        <div class="table-user">
+          <img src="${p.avatar}" class="table-avatar" alt=""/>
+          ${p.autor}
+        </div>
+      </td>
+      <td class="post-preview">${p.contenido.substring(0, 80)}…</td>
+      <td><span class="likes-badge">❤️ ${p.likes}</span></td>
+      <td>${new Date(p.fecha).toLocaleDateString('es-MX')}</td>
+      <td>
+        <button class="btn-icon-sm danger" onclick="deletePost(${p.id})" title="Eliminar">
+          <i data-lucide="trash-2"></i>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+  lucide.createIcons();
+}
+
+async function deletePost(id) {
+  if (!confirm('¿Eliminar esta publicación?')) return;
+  await fetch(`/api/publicaciones/${id}`, {method:'DELETE'});
+  loadPosts(); showToast('Publicación eliminada', 'warning');
+}
+
+function toggleSidebar() { document.getElementById('admin-sidebar').classList.toggle('collapsed'); }
+loadPosts();
+</script>
+{% endblock %}
